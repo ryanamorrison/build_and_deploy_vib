@@ -1,0 +1,5 @@
+[local_group]
+localhost
+
+[esxi_by_ip]
+192.168.2.10

@@ -1,0 +1,64 @@
+<vib version="{{ var_vib_version }}">
+<type>{{ var_vib_type }}</type>
+<name>{{ var_vib_base_name }}</name>
+<version>{{ var_project_version }}</version>
+<vendor>{{ var_organization_name }}</vendor>
+<summary>{{ var_vib_project_summary }}</summary>
+<description>{{ var_vib_project_description }}</description>
+<release-date>{{ var_vib_date_time }}</release-date>
+<urls/>
+
+<relationships>
+{% if var_vib_relationships is defined and var_vib_relationships.depends is defined %}  <depends>
+{% if var_vib_relationships.depends.constraint.name is defined %}    <constraint name="{{ var_vib_relationships.depends.constraint.name }}"{% endif %}
+{% if var_vib_relationships.depends.constraint.relation is defined %} relation="{{ var_vib_relationships.depends.constraint.relation }}"{% endif %}
+{% if var_vib_relationships.depends.constraint.version is defined %} version="{{ var_vib_relationships.depends.constraint.version }}"{% endif %}/>
+{% endif %}
+{% if var_vib_relationships is defined and var_vib_relationships.depends is defined %}  </depends>{% else %}  <depends/>{% endif %}
+
+{% if var_vib_relationships is defined and var_vib_relationships.conflicts is defined %}  <conflicts>{{ var_vib_relationships.conflicts }}{% endif %}
+{% if var_vib_relationships is defined and var_vib_relationships.conflicts is defined %}</conflicts>{% else %}  <conflicts/>{% endif %}
+
+{% if var_vib_relationships is defined and var_vib_relationships.replaces is defined %}  <replaces>{{ var_vib_relationships.replaces }}{% endif %}
+{% if var_vib_relationships is defined and var_vib_relationships.replaces is defined %}</replaces>{% else %}  <replaces/>{% endif %}
+
+{% if var_vib_relationships is defined and var_vib_relationships.provides is defined %}  <provides>{{ var_vib_relationships.provides }}{% endif %}
+{% if var_vib_relationships is defined and var_vib_relationships.provides is defined %}</provides>{% else %}  <provides/>{% endif %}
+
+{% if var_vib_relationships is defined and var_vib_relationships.compatible_with is defined %}  <compatibleWith>{{ var_vib_relationships.compatible_with }}{% endif %}
+{% if var_vib_relationships is defined and var_vib_relationships.compatible_with is defined %}</compatibleWith>{% else %}  <compatibleWith/>{% endif %}
+
+</relationships>
+
+{% if var_vib_tags is defined %}
+<software-tags>
+{% for vibtag in var_vib_tags %}
+  <tag>{{ vibtag }}</tag>
+{% endfor %}
+</software-tags>
+{% else %}
+<software-tags/>
+{% endif %}
+
+<system-requires>
+  <maintenance-mode>{{ var_vib_maintenance_mode }}</maintenance-mode>
+</system-requires>
+
+<file-list>
+{% for vibfile in var_file_payload %}
+  <file>{{ vibfile.dest }}</file>
+{% endfor %}
+</file-list>
+
+<acceptance-level>{{ var_vib_acceptance_level }}</acceptance-level>
+<live-install-allowed>{{ var_vib_live_install }}</live-install-allowed>
+<live-remove-allowed>{{ var_vib_live_remove }}</live-remove-allowed>
+<cimom-restart>{{ var_vib_cimom_restart }}</cimom-restart>
+<stateless-ready>{{ var_vib_stateless_ready }}</stateless-ready>
+<overlay>{{ var_vib_overlay }}</overlay>
+<payloads>
+  <payload name="{{ var_payload_name }}" type="vgz" size="{{ var_archive_file_size }}">
+    <checksum checksum-type="sha-256">{{ var_checksum }}</checksum>
+  </payload>
+</payloads>
+</vib>

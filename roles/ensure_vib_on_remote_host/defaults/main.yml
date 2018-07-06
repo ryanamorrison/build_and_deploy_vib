@@ -1,0 +1,5 @@
+var_set_maintenance: false
+var_do_not_suspend_vms: true
+var_new_version: false
+var_existing_vib: false
+

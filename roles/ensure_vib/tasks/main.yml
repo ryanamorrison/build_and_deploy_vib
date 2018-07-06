@@ -1,0 +1,131 @@
+- name: set base name directory
+  set_fact:
+    var_base_project_dir: "{{ var_home_dir }}/{{ var_sandbox_dir }}/vibs/{{ var_project_name }}/{{ var_project_version }}"
+
+- name: ensure vibs and local_facts directory
+  file:
+    path: "{{ var_base_project_dir }}"
+    state: directory
+    owner: "{{ var_current_user }}"
+    group: "{{ var_current_user }}"
+    mode: 0700
+
+- name: check to see if a prior tar archive (with the same name) needs to be removed
+  stat: 
+    path: "{{ var_base_project_dir }}/{{ var_payload_name }}"
+  register: arc_tar
+    
+- name: remove prior archive if it exists
+  file:
+    path: "{{ var_base_project_dir }}/{{ var_payload_name }}"
+    state: absent
+  when: arc_tar.stat.exists == true
+    
+- name: ensure local_facts vib directories
+  file:
+    path: "{{ var_base_project_dir }}/{{ item }}"
+    state: directory
+    owner: "{{ var_owner_on_target_host }}"
+    group: "{{ var_group_on_target_host }}"
+    mode: 0770
+  with_list: var_directory_payload
+  when: var_skip_staging_step == false
+    
+- name: copy fact scripts into vib directories
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ var_base_project_dir }}/{{ item.dest }}"
+    owner: "{{ var_owner_on_target_host }}"
+    group: "{{ var_group_on_target_host }}"
+    mode: 0750
+  with_list: var_file_payload 
+  when: var_skip_staging_step == false
+    
+- name: ensure the payload is archived
+  shell: tar -czvf {{ var_base_project_dir }}/{{ var_payload_name }} --directory={{ var_base_project_dir }}/ {{ var_top_level_directory }}/
+
+- name: generate a checksum on the file
+  shell: sha256sum {{ var_base_project_dir }}/{{ var_payload_name }} | awk -F" " '{ print $1 }' | xargs
+  register: checksum_result
+  changed_when: checksum_result.rc > 0
+
+- name: set a fact for checksum file
+  set_fact:
+    var_checksum: "{{ checksum_result.stdout }}"
+
+- name: change owner to root:root on the payload file
+  file: 
+    path: "{{ var_base_project_dir }}/{{ var_payload_name }}"
+    owner: root
+    group: root
+    mode: 0640
+
+- name: get a filesize for the descriptor file
+  shell: stat -c %s {{ var_base_project_dir }}/{{ var_payload_name }}
+  register: arc_size
+  changed_when: arc_size.rc > 0
+  
+- name: set a filesize fact for the template
+  set_fact:
+    var_archive_file_size: "{{ arc_size.stdout }}"
+
+# close enough
+- name: get current date-time in expected format
+  shell: echo $(date +%Y-%m-%dT%H:%M:%S).000001$(date +%:z) 
+  register: curr_date
+  changed_when: curr_date.rc > 0
+  
+- name: set fact for current date-time
+  set_fact:
+    var_vib_date_time: "{{ curr_date.stdout }}"
+
+- name: ensure a descriptor.xml file to local_facts archive
+  template: 
+    src: descriptor.xml.j2
+    dest: "{{ var_base_project_dir }}/descriptor.xml"
+    owner: root
+    group: root
+    mode: 0700
+
+- name: change owner to root:root on the descriptor file
+  file:
+    path: "{{ var_base_project_dir }}/descriptor.xml"
+    owner: root
+    group: root
+    mode: 0640
+
+# this is required, yet ignored for community supported VIBs  
+- name: generate a random cert
+  shell: openssl req -x509 -newkey rsa:4096 -keyout {{ var_base_project_dir }}/{{ var_key_name }}.pem -out {{ var_base_project_dir }}/{{ var_cert_name }}.pem -days 3650 -batch -nodes
+  register: cmd_result
+  changed_when: cmd_result.rc > 0
+    
+- name: ensure a sig.pkcs7 file from cert
+  shell: openssl crl2pkcs7 -nocrl -certfile {{ var_base_project_dir }}/{{ var_cert_name }}.pem -out {{ var_base_project_dir }}/sig.pkcs7
+  register: cmd_result
+  changed_when: cmd_result.rc > 0
+
+- name: check pkcs7 file 
+  shell: openssl pkcs7 -in {{ var_base_project_dir }}/sig.pkcs7 -print_certs
+  register: cmd_result
+  changed_when: cmd_result.rc > 0
+
+- name: change owner to root:root on the pkcs7 file
+  file:
+    path: "{{ var_base_project_dir }}/sig.pkcs7"
+    owner: root
+    group: root
+    mode: 0640
+    
+- name: ensure key and cert are removed    
+  file: 
+    path: "{{ var_base_project_dir }}/{{ item }}"
+    state: absent
+  with_items:
+    - "{{ var_cert_name }}.pem"
+    - "{{ var_key_name }}.pem"
+    
+- name: archive the file into a vib
+  shell: ar -r {{ var_base_project_dir }}/{{ var_vib_base_name }}.vib {{ var_base_project_dir }}/descriptor.xml {{ var_base_project_dir }}/sig.pkcs7 {{ var_base_project_dir }}/{{ var_payload_name }}
+
+# no need to change ownership on vib, its package and ownership can be changed on copy

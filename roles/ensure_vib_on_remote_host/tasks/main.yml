@@ -1,0 +1,92 @@
+- name: check for an existing vib
+  shell: esxcli software vib list | grep {{ var_vib_base_name }}
+  register: existing_vib
+  failed_when: existing_vib.rc > 1
+  changed_when: existing_vib.rc > 1
+
+- name: set fact when there is an existing vib with same name
+  set_fact:
+    var_existing_vib: true
+  when: existing_vib.rc == 0 
+
+- name: check existing vib version
+  shell: esxcli software vib list | grep ansiblefacts | awk -F" " '{ print $2 }' | xargs
+  register: existing_vib_ver
+  changed_when: existing_vib_ver.rc > 0
+  when: var_existing_vib == true
+
+- name: set fact if version is different
+  set_fact:
+    var_new_version: true 
+  when: var_existing_vib == true and existing_vib_ver.stdout != "{{ var_project_version }}"
+
+- name: check level of acceptance
+  shell: esxcli software acceptance get
+  register: accept_level
+  changed_when: accept_level.rc > 0
+
+- name: upload vib package
+  copy: 
+    src: "{{ var_home_dir }}/{{ var_sandbox_dir }}/vibs/{{ var_project_name }}/{{ var_project_version }}/{{ var_vib_base_name }}.vib"
+    dest: "/tmp/{{ var_vib_base_name }}.vib"
+  when: var_existing_vib == false or var_new_version == true 
+
+- name: check maintenance mode
+  shell: esxcli system maintenanceMode get
+  register: maintmode
+  when: var_vib_maintenance_mode == true
+  changed_when: maintmode.rc > 0
+
+- name: set fact based on whether maintenance mode is needed
+  set_fact:
+    var_set_maintenance: true
+  when: maintmode is defined and maintmode.stdout == "Disabled" and var_vib_maintenance_mode == true
+  
+- name: set fact based on whether the software acceptance level needs to be changed
+  set_fact:
+    var_set_maintenance: true
+  when: accept_level.stdout != "CommunitySupported" and var_vib_acceptance_level == "community"
+
+- name: ensure helper script to suspend powered on VMs
+  copy: 
+    src: "{{ item }}"
+    dest: "/tmp/{{ item }}"
+  with_items:
+    - suspend_for_mm.sh
+    - resume_from_mm.sh 
+  when: var_do_not_suspend_vms == false and var_set_maintenance == true
+
+- name: run helper scripts to suspend existing VMs
+  shell: /tmp/suspend_for_mm.sh
+  when: var_do_not_suspend_vms == false and var_set_maintenance == true
+
+# this has to be changed in maintenance mode
+- name: ensure maintenance mode is enabled
+  shell: esxcli system maintenanceMode set --enable true 
+  when: var_set_maintenance == true
+
+- name: ensure software acceptance level
+  shell: esxcli software acceptance set --level CommunitySupported 
+  when: accept_level.stdout != "CommunitySupported" and var_vib_acceptance_level == "community"
+
+- name: ensure existing vib is removed (if present)
+  shell: esxcli software vib remove --vibname={{ var_vib_base_name }}
+  when: var_existing_vib == true and var_new_version == true
+
+- name: ensure vib 
+  shell: esxcli software vib install -v /tmp/{{ var_vib_base_name }}.vib
+  when: var_existing_vib == false or var_new_version == true
+
+- name: run helper scripts to resume existing VMs
+  shell: /tmp/resume_from_mm.sh
+  when: var_do_not_suspend_vms == false and var_set_maintenance == true
+
+- name: ensure mainenance mode is disabled
+  shell: esxcli system maintenanceMode set --enable false
+  when: var_set_maintenance == true
+
+- name: ensure vib is removed (clean up)
+  file:
+    path: "/tmp/{{ var_vib_base_name }}.vib" 
+    state: absent
+

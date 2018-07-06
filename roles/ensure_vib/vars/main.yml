@@ -1,0 +1,110 @@
+# name of a local project directory
+var_project_name: "a_thing_to_install_on_esxi"
+
+var_owner_on_target_host: root
+var_group_on_target_host: root
+
+# other project details
+var_project_version: 0.0.1 
+var_vib_project_summary: "a brief summary of the thing"
+var_vib_project_description: "more elaborate detail of the thing"
+
+# setting this variable skips the next two
+# variables as it setting it to true means
+# that the files are already staged properly
+var_skip_staging_step: false
+
+# relative paths only, the directories where files 
+# are delivered on the esxi host, note: there are 
+# only a few directories that community 'level'
+# files are supported
+var_directory_payload: [ "opt", "opt/subdir", "opt/subdir/subdir" ]
+
+# files to be 'installed' on the esxi host
+# - the src would be a working directory with some files whereas the dest is where they
+#   are placed in the archive file (relative path) and also reflects where belong when 
+#   installed on the esxi host
+#
+# - the permissions (mode) and ownership should reflect how they should be on the esxi server
+#
+# - insert as many or as few as needed (these files will go into files -- if you need templates, 
+#   alter tasks/main.yml) 
+#
+# - additionally the 'missing' slash in opt below is intentional
+var_file_payload: 
+- src: a_file 
+  dest: opt/a_file
+  mode: 0740
+  owner: "{{ var_owner_on_target_host }}"
+  group: "{{ var_group_on_target_host }}"
+- src: another_file
+  dest: opt/subdir/subdir/another_file
+  mode: 0740
+  owner: "{{ var_owner_on_target_host }}"
+  group: "{{ var_group_on_target_host }}"
+
+# this will generally be     
+var_top_level_directory: opt
+
+# the name of the tar file that bundles up the above files
+# to keep things from becoming confusing use a different name
+# than the project directory
+# this is also the name when the vibs are listed in the esxi command
+var_payload_name: "project_name"
+
+# Community 'level' vibs do not require a cert but
+# esxcli expects to see it there anyway
+# cert/keypair name for vib, the below defaults are
+# fine for community 'level' vibs
+var_cert_name: throwaway_cert.pem 
+var_key_name: throwaway_key.pem
+
+# the vib filename, do not include .vib in this name
+# to keep things from becoming confusing, do not use the 
+# the project or payload names above
+# this is also the name when the vibs are listed in the esxi command
+# to avoid errors, use letters only
+var_vib_base_name: "projectname"
+
+# VIB version level, set this to something other than the default 
+# if you know what you are doing
+var_vib_version: 5.0
+
+# some VIBs require maintenance mode, set here if so
+var_vib_maintenance_mode: false
+
+# target software acceptance level (generally this will be 'community' unless
+# you have a cert signed by VMware)
+var_vib_acceptance_level: community
+
+# whether or not the VIB can be live installed/removed
+var_vib_live_install: true
+var_vib_live_remove: true
+
+# whether or not cimom needs to be restarted (monitoring) 
+var_vib_cimom_restart: false
+
+# supports host profiles and other technologies that can be deployed on a stateless host
+var_vib_stateless_ready: true
+
+# whether or not this is an overlay
+var_vib_overlay: false
+
+# this will usually be 'bootbank' 
+var_vib_type: bootbank
+
+# documentation only lists this as an unordered list of tags
+var_vib_tags: [ "module", "drive" ]
+
+# relationships (infrequently used) uncomment as needed
+# var_vib_relationships:
+#  depends:
+#    constraint:
+#      name: esx-version
+#      relation: "&gt;="
+#      version: 5.0.0
+#  conflicts: foo
+#  replaces: bar
+#  provides: baz
+#  compatible_with: stuff
+

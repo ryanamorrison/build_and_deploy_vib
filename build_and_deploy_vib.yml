@@ -1,0 +1,21 @@
+---
+- hosts: local_group
+  become: true
+  become_method: sudo
+  connection: local
+  gather_facts: False
+  vars_files: [ "environmental_vars.yml" ]
+
+  roles:
+    - { role: ensure_vib }
+
+- hosts: esxi_by_ip 
+  remote_user: "{{ esxi_user }}"
+  gather_facts: False
+  vars:
+    - ansible_ssh_pass: "{{ esxi_password }}"
+    - var_do_not_suspend_vms: false
+  vars_files: [ "esxi_creds_vault.yml", "roles/ensure_vib/vars/main.yml", "environmental_vars.yml" ]
+
+  roles:
+    - { role: ensure_vib_on_remote_host }

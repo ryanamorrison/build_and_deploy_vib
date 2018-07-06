@@ -1,0 +1,9 @@
+# the build process creates artifacts in the local account
+var_current_user: "{{ lookup('env','USER') }}"
+var_home_dir: "{{ lookup('env','HOME') }}"
+
+# a place where vib can be built locally
+var_sandbox_dir: sandbox
+
+# your org name
+var_organization_name: foo, inc.
